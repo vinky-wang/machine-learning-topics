@@ -1,0 +1,106 @@
+---
+title: "Image Segmentation by K-Means Clustering"
+author: "Vinky Wang"
+date: "16/10/2020"
+output: html_document
+---
+
+# Overview
+Suppose we want to simplify or change the representation of an image into something easier to analyze. We can use image segmentation to assign a label to every pixel in an image based on certain shared characteristics. The following code uses the k-means clustering algorithm to partition an image into K clusters based on colours. I chose to demonstrate this on an [image] (https://fineartamerica.com/featured/jason-alexander-as-george-costanza-movie-poster-prints.html) that I think about from time to time, but any image can be used.
+
+## Import library
+```{r message=FALSE, warning=FALSE}
+library(imager)
+library(dplyr)
+library(purrr)
+library(tidymodels)
+library(scales)
+library(gridExtra)
+```
+
+## Import the image
+```{r}
+im <- imager::load.image("timeless_art.jpg")
+```
+
+## Convert 'cimg' object into a dataframe
+```{r}
+str(im)
+
+#assigning RGB colour to each pixel coordinate (x,y)
+tidy_dat = as.data.frame(im, wide="c") %>%
+  rename(R=c.1, G=c.2, B=c.3)
+head(tidy_dat)
+
+
+#get data in tidy format (only working with colours so remove the pixel coordinates)
+dat = select(tidy_dat, c(-x,-y))
+```
+
+## K-Means Clustering
+This is the first attempt at k-means clustering where we select an arbitrary number of clusters, let's say k=20, and adjust our choices based on how well it performs. 
+```{r}
+kclusts = tibble(k=c(2:20)) %>%
+  mutate(kclust = map(k, ~kmeans(x=dat, centers=.x, nstart=4)), glanced=map(kclust, glance),)
+
+clusterings = kclusts %>% unnest(cols=c(glanced))
+head(clusterings) 
+```
+
+We can get an idea on the number of clusters to use by looking at the scree plot and a plot of the relative change of cluster k to (k-1). 
+```{r}
+#scree plot
+ggplot(clusterings, aes(k, tot.withinss)) + geom_line() + geom_point()
+
+
+#plot of ratio for k and (k-1) for relative change
+nclust = length(clusterings$k)
+ratio = rep(NA, nclust-1)
+for (kk in 2:nclust) {
+ratio[kk-1] = clusterings$tot.withinss[kk]/clusterings$tot.withinss[kk-1]
+}
+plot_data <- data.frame(k = clusterings$k[2:nclust],ratio)
+ggplot(plot_data, aes(x=k, y = ratio)) + geom_line() 
+
+```
+Based on the elbow rule for the scree plot, we notice that the within sum of squares are about the same after 12 clusters. The relative change also reaches some sort of stabilization after 12 clusters which confirms our choice of using k=12 clusters on the image. 
+
+
+```{r, message=FALSE, warnings=FALSE, echo=FALSE}
+k = 12
+kclust = kmeans(select(tidy_dat, -x, -y), centers=k, nstart=20)
+
+#the centers of each cluster
+centers = tidy(kclust)
+
+#add a new column for the corresponding RGB colour palette
+centers = centers %>% 
+  mutate(col=rgb(R,G,B))
+centers
+
+scales::show_col(centers$col)
+```
+By looking at the colours clustered based on our chosen cluster size of k=12, 
+
+We see the the colours clustered based on our chosen cluster size of k=12. Although there are many brown colours, each one looks fairly distinct relative to what is in the actual image. Let us stick with 12 clusters. 
+
+After obtaining the clusters, the next step of the k-means clustering algorithm is to perform cluster center replacement. 
+```{r}
+#augment the initial data with the clusters
+tidy_dat = augment(kclust, tidy_dat) %>%
+  rename(cluster=.cluster)
+glimpse(tidy_dat)
+
+#now can plot the clustered picture
+p2 = ggplot(tidy_dat, aes(x=x, y = y, fill = cluster)) +
+geom_tile() +
+scale_discrete_manual(aesthetics = "fill", values = centers$col) +
+scale_y_reverse() + theme_void()
+
+```
+
+The final product of the segmented image is shown below. 
+```{r}
+p2
+```
+Both images look quite similar and we have just successfully reduced the original image of 1776600 elements into one that is only of 592200 elements. I, for one, am seduced.
