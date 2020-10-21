@@ -6,7 +6,7 @@ output: html_document
 ---
 
 # Overview
-Suppose we want to simplify or change the representation of an image into something easier to analyze. We can use image segmentation to assign a label to every pixel in an image based on certain shared characteristics. The following code uses the k-means clustering algorithm to partition an image into K clusters based on colours. I chose to demonstrate this on an [image] (https://fineartamerica.com/featured/jason-alexander-as-george-costanza-movie-poster-prints.html) that I think about from time to time, but any image can be used.
+Suppose we want to simplify or change the representation of an image into something easier to analyze. We can use image segmentation to assign a label to every pixel in an image based on certain shared characteristics. The following code uses the k-means clustering algorithm to partition an image into K clusters based on colours. I chose to demonstrate this on an [image] (https://fineartamerica.com/featured/jason-alexander-as-george-costanza-movie-poster-prints.html) that I came across from watching Seinfeld the other day, but any image can be used.
 
 ## Import library
 ```{r message=FALSE, warning=FALSE}
@@ -103,4 +103,4 @@ The final product of the segmented image is shown below.
 ```{r}
 p2
 ```
-Both images look quite similar and we have just successfully reduced the original image of 1776600 elements into one that is only of 592200 elements. I, for one, am seduced.
+Both images look quite similar, however we have just reduced the original image of 1776600 elements into one that is only of 592200 elements. 
